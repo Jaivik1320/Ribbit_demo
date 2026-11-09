@@ -1,0 +1,1086 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Ribbit EM — Advanced GCS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{--bg:#0d0f14;--bg2:#131620;--bg3:#1a1e2e;--border:#232840;--blue:#4f8ef7;--green:#34d399;--amber:#f59e0b;--red:#ef4444;--purple:#a78bfa;--text:#e2e8f0;--muted:#64748b;--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;overflow:hidden;height:100vh;display:flex;flex-direction:column;}
+/* TOP NAV */
+#topbar{height:44px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:16px;flex-shrink:0;}
+#topbar .logo{font-weight:700;font-size:15px;color:var(--blue);letter-spacing:.5px;}
+#topbar .logo span{color:var(--text);}
+.nav-tabs{display:flex;gap:2px;margin-left:8px;}
+.nav-tab{padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:500;transition:all .15s;}
+.nav-tab:hover{background:var(--bg3);color:var(--text);}
+.nav-tab.active{background:var(--blue);color:#fff;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.status-pill{padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;}
+.status-pill.ok{background:#134e3a;color:var(--green);}
+.status-pill.warn{background:#451a03;color:var(--amber);}
+.utc-clock{font-family:var(--mono);font-size:12px;color:var(--muted);}
+/* LAYOUT */
+#main{flex:1;display:flex;overflow:hidden;}
+#sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+/* SIDEBAR */
+.sidebar-section{padding:12px 10px 6px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;}
+.sidebar-item{padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-radius:6px;margin:1px 6px;color:var(--muted);font-size:12px;font-weight:500;transition:all .15s;}
+.sidebar-item:hover{background:var(--bg3);color:var(--text);}
+.sidebar-item.active{background:#1e2d4a;color:var(--blue);}
+.sidebar-item .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot-green{background:var(--green);}
+.dot-amber{background:var(--amber);}
+.dot-red{background:var(--red);}
+.dot-blue{background:var(--blue);}
+.dot-purple{background:var(--purple);}
+.sidebar-ac{font-size:11px;color:var(--muted);padding:4px 12px 2px 32px;}
+/* PANELS */
+.panel{display:none;flex:1;overflow:hidden;}
+.panel.active{display:flex;}
+/* LIVE OPS */
+#panel-ops{flex-direction:column;}
+.ops-top{flex:1;display:flex;overflow:hidden;}
+.map-wrap{flex:1;position:relative;overflow:hidden;background:#0a0c12;}
+#gcs-map{width:100%;height:100%;}
+.map-overlay{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:6px;}
+.map-badge{background:rgba(13,15,20,.85);border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:11px;font-weight:600;}
+.ac-selector{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;gap:4px;}
+.ac-btn{padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:rgba(13,15,20,.85);cursor:pointer;font-size:11px;font-weight:600;color:var(--muted);transition:all .15s;}
+.ac-btn:hover{border-color:var(--blue);}
+.ac-btn.selected{background:#1e2d4a;border-color:var(--blue);color:var(--blue);}
+.pfd-panel{width:300px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;}
+.pfd-title{padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;border-bottom:1px solid var(--border);}
+#pfd-svg{flex:1;}
+.ops-bottom{height:160px;border-top:1px solid var(--border);display:flex;overflow:hidden;}
+.fleet-table-wrap{flex:1;overflow-y:auto;padding:8px 0;}
+.ops-log{width:280px;border-left:1px solid var(--border);overflow-y:auto;padding:6px;}
+.log-entry{padding:3px 6px;font-size:11px;font-family:var(--mono);border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:8px;}
+.log-ts{color:var(--muted);flex-shrink:0;}
+.log-info{color:var(--text);}
+.log-warn{color:var(--amber);}
+.log-crit{color:var(--red);}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border);}
+td{padding:5px 10px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);}
+tr:hover td{background:rgba(255,255,255,.03);}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;}
+.badge-green{background:#134e3a;color:var(--green);}
+.badge-amber{background:#451a03;color:var(--amber);}
+.badge-blue{background:#1e2d4a;color:var(--blue);}
+.badge-red{background:#450a0a;color:var(--red);}
+.badge-purple{background:#2e1065;color:var(--purple);}
+/* TELEMETRY */
+#panel-telem{flex-direction:column;overflow-y:auto;padding:12px;}
+.telem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.telem-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;}
+.telem-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px;}
+.telem-val{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text);}
+.telem-unit{font-size:12px;color:var(--muted);margin-left:3px;}
+.sparkline-wrap{margin-top:6px;}
+canvas.spark{width:100%;height:36px;display:block;}
+.link-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.link-card{flex:1;min-width:140px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.link-name{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+.link-bar-bg{height:6px;background:var(--bg3);border-radius:3px;margin:6px 0 4px;}
+.link-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.link-pct{font-size:12px;font-weight:700;font-family:var(--mono);}
+.health-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.health-row{display:flex;justify-content:space-between;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;}
+/* MISSIONS */
+#panel-missions{flex-direction:column;overflow-y:auto;padding:12px;}
+.gantt-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;}
+.gantt-title{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;}
+.gantt-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;height:24px;}
+.gantt-label{width:120px;font-size:11px;color:var(--text);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-track{flex:1;height:16px;background:var(--bg3);border-radius:4px;position:relative;}
+.gantt-bar{position:absolute;height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:9px;font-weight:700;overflow:hidden;white-space:nowrap;}
+.gantt-today{position:absolute;top:0;bottom:0;width:1px;background:var(--red);opacity:.7;}
+/* COMMS */
+#panel-comms{flex-direction:column;overflow-y:auto;padding:12px;}
+.radio-log{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0;overflow:hidden;margin-bottom:10px;}
+.radio-header{padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+.radio-msgs{height:200px;overflow-y:auto;padding:8px 0;}
+.radio-msg{padding:5px 12px;font-size:11px;font-family:var(--mono);display:flex;gap:10px;border-bottom:1px solid rgba(255,255,255,.04);}
+.radio-ts{color:var(--muted);flex-shrink:0;}
+.radio-call{color:var(--blue);flex-shrink:0;width:60px;}
+.radio-text{color:var(--text);}
+/* ARCH */
+#panel-arch{flex-direction:column;overflow-y:auto;padding:12px;}
+.code-tabs{display:flex;gap:2px;margin-bottom:8px;}
+.code-tab{padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--muted);border:1px solid var(--border);}
+.code-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--mono);font-size:11px;line-height:1.65;overflow-x:auto;white-space:pre;color:#cdd6f4;margin-bottom:10px;display:none;max-height:380px;overflow-y:auto;}
+.code-block.active{display:block;}
+.kw{color:#cba6f7;}.fn{color:#89b4fa;}.str{color:#a6e3a1;}.cmt{color:#585b70;}.num{color:#fab387;}.type{color:#f38ba8;}
+/* EM MODAL */
+#em-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;}
+#em-modal.open{display:flex;}
+.em-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:720px;max-height:85vh;overflow-y:auto;padding:24px;}
+.em-header{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+.em-close{cursor:pointer;color:var(--muted);font-size:18px;line-height:1;}
+.em-section{margin-bottom:16px;}
+.em-section h3{font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;}
+.em-section p,.em-section li{font-size:12px;line-height:1.7;color:var(--muted);}
+.em-section ul{padding-left:16px;}
+.em-section li{margin-bottom:4px;}
+/* ALERT TOAST */
+#alert-toast{position:fixed;bottom:20px;right:20px;background:#450a0a;border:1px solid var(--red);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--red);font-weight:600;display:none;z-index:200;max-width:300px;}
+/* CHECKLIST */
+.checklist-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;}
+.check-item{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;}
+.check-box{width:16px;height:16px;border-radius:4px;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+.check-box.done{background:var(--green);border-color:var(--green);color:#fff;}
+.check-label{font-size:12px;color:var(--text);}
+.check-label.done{color:var(--muted);text-decoration:line-through;}
+/* CMD CONFIRM */
+.cmd-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:150;align-items:center;justify-content:center;}
+.cmd-modal.open{display:flex;}
+.cmd-box{background:var(--bg2);border:1px solid var(--red);border-radius:12px;padding:24px;width:380px;text-align:center;}
+.cmd-box h2{font-size:15px;font-weight:700;color:var(--red);margin-bottom:8px;}
+.cmd-box p{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+.cmd-btns{display:flex;gap:8px;justify-content:center;}
+.btn{padding:8px 18px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);}
+.btn-red{background:var(--red);color:#fff;}
+.btn-muted{background:var(--bg3);color:var(--muted);}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-green{background:var(--green);color:#0d0f14;}
+/* scrollbars */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">Ribbit<span> GCS</span></div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showPanel('ops',this)">Live Ops</div>
+    <div class="nav-tab" onclick="showPanel('telem',this)">Telemetry</div>
+    <div class="nav-tab" onclick="showPanel('missions',this)">Missions</div>
+    <div class="nav-tab" onclick="showPanel('comms',this)">Comms</div>
+    <div class="nav-tab" onclick="showPanel('arch',this)">Architecture</div>
+    <div class="nav-tab" onclick="showPanel('checklist',this)">Pre-Flight</div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-pill ok"><span>●</span> LINK NOMINAL</div>
+    <div class="status-pill warn" id="gps-pill"><span>●</span> GPS 3D FIX</div>
+    <div class="utc-clock" id="utc-clock">00:00:00Z</div>
+    <button class="btn btn-blue" style="font-size:11px;padding:5px 10px;" onclick="document.getElementById('em-modal').classList.add('open')">✦ EM Thinking</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="main">
+<div id="sidebar">
+  <div class="sidebar-section">Fleet</div>
+  <div class="sidebar-item active" onclick="selectAc('RB-01',this)"><span class="dot dot-blue"></span>RB-01 — Fixed Wing</div>
+  <div class="sidebar-ac">Alt 3,420 ft · Spd 112 kts</div>
+  <div class="sidebar-item" onclick="selectAc('RB-02',this)"><span class="dot dot-green"></span>RB-02 — Fixed Wing</div>
+  <div class="sidebar-ac">Alt 2,180 ft · Spd 97 kts</div>
+  <div class="sidebar-item" onclick="selectAc('RB-H1',this)"><span class="dot dot-purple"></span>RB-H1 — Helicopter</div>
+  <div class="sidebar-ac">Alt 650 ft · Spd 44 kts</div>
+  <div class="sidebar-section">Quick Actions</div>
+  <div class="sidebar-item" onclick="triggerRTL()"><span class="dot dot-amber"></span>Return to Launch</div>
+  <div class="sidebar-item" onclick="triggerLoiter()"><span class="dot dot-blue"></span>Loiter Hold</div>
+  <div class="sidebar-item" onclick="triggerAlert()"><span class="dot dot-red"></span>Emergency Land</div>
+  <div class="sidebar-section">System</div>
+  <div class="sidebar-item"><span class="dot dot-green"></span>GCS Server OK</div>
+  <div class="sidebar-item"><span class="dot dot-green"></span>MAVLink Bridge</div>
+  <div class="sidebar-item"><span class="dot dot-amber"></span>Video Stream</div>
+</div>
+
+<div id="content">
+
+<!-- LIVE OPS -->
+<div class="panel active" id="panel-ops">
+  <div class="ops-top">
+    <div class="map-wrap">
+      <svg id="gcs-map" viewBox="0 0 760 400" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="terrainGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#141a2e"/>
+            <stop offset="100%" stop-color="#0a0c14"/>
+          </radialGradient>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M40 0L0 0 0 40" fill="none" stroke="#1a2040" stroke-width=".5"/>
+          </pattern>
+        </defs>
+        <rect width="760" height="400" fill="url(#terrainGrad)"/>
+        <rect width="760" height="400" fill="url(#grid)"/>
+        <!-- terrain patches -->
+        <ellipse cx="200" cy="200" rx="120" ry="80" fill="#111827" opacity=".6"/>
+        <ellipse cx="560" cy="150" rx="90" ry="60" fill="#111827" opacity=".5"/>
+        <!-- range rings from CYYZ -->
+        <circle cx="380" cy="200" r="60" fill="none" stroke="#1e2d4a" stroke-width="1" stroke-dasharray="4,4"/>
+        <circle cx="380" cy="200" r="120" fill="none" stroke="#1e2d4a" stroke-width="1" stroke-dasharray="4,4"/>
+        <circle cx="380" cy="200" r="180" fill="none" stroke="#1e2d4a" stroke-width=".5" stroke-dasharray="2,6"/>
+        <!-- TFR zone -->
+        <rect x="460" y="260" width="120" height="80" rx="4" fill="#ef444418" stroke="#ef4444" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="520" y="295" text-anchor="middle" fill="#ef4444" font-size="9" font-weight="700">TFR ZONE</text>
+        <text x="520" y="307" text-anchor="middle" fill="#ef4444" font-size="8">SFC–2000ft</text>
+        <!-- airports -->
+        <g id="apt-CYYZ" transform="translate(380,200)">
+          <circle r="8" fill="#1e2d4a" stroke="#4f8ef7" stroke-width="1.5"/>
+          <line x1="-6" y1="0" x2="6" y2="0" stroke="#4f8ef7" stroke-width="1.5"/>
+          <line x1="0" y1="-6" x2="0" y2="6" stroke="#4f8ef7" stroke-width="1.5"/>
+          <text y="20" text-anchor="middle" fill="#4f8ef7" font-size="10" font-weight="700">CYYZ</text>
+        </g>
+        <g id="apt-CYHM" transform="translate(180,280)">
+          <circle r="6" fill="#1a2040" stroke="#64748b" stroke-width="1"/>
+          <line x1="-4" y1="0" x2="4" y2="0" stroke="#64748b" stroke-width="1.5"/>
+          <line x1="0" y1="-4" x2="0" y2="4" stroke="#64748b" stroke-width="1.5"/>
+          <text y="17" text-anchor="middle" fill="#64748b" font-size="9">CYHM</text>
+        </g>
+        <g id="apt-CYKF" transform="translate(580,310)">
+          <circle r="6" fill="#1a2040" stroke="#64748b" stroke-width="1"/>
+          <line x1="-4" y1="0" x2="4" y2="0" stroke="#64748b" stroke-width="1.5"/>
+          <line x1="0" y1="-4" x2="0" y2="4" stroke="#64748b" stroke-width="1.5"/>
+          <text y="17" text-anchor="middle" fill="#64748b" font-size="9">CYKF</text>
+        </g>
+        <!-- waypoint paths -->
+        <polyline id="wp-path-01" points="" fill="none" stroke="#4f8ef7" stroke-width="1.5" stroke-dasharray="6,4" opacity=".6"/>
+        <polyline id="wp-path-02" points="" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="6,4" opacity=".6"/>
+        <polyline id="wp-path-h1" points="" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,4" opacity=".6"/>
+        <!-- waypoints -->
+        <g id="wp-dots"></g>
+        <!-- aircraft -->
+        <g id="ac-RB-01" transform="translate(300,160)">
+          <polygon points="0,-10 6,8 0,4 -6,8" fill="#4f8ef7"/>
+          <circle r="14" fill="none" stroke="#4f8ef7" stroke-width=".5" opacity=".4"/>
+          <text y="24" text-anchor="middle" fill="#4f8ef7" font-size="9" font-weight="700">RB-01</text>
+        </g>
+        <g id="ac-RB-02" transform="translate(480,120)">
+          <polygon points="0,-10 6,8 0,4 -6,8" fill="#34d399"/>
+          <circle r="14" fill="none" stroke="#34d399" stroke-width=".5" opacity=".4"/>
+          <text y="24" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">RB-02</text>
+        </g>
+        <g id="ac-RB-H1" transform="translate(220,320)">
+          <circle r="8" fill="#a78bfa"/>
+          <line x1="-10" y1="0" x2="10" y2="0" stroke="#a78bfa" stroke-width="2"/>
+          <line x1="0" y1="-10" x2="0" y2="10" stroke="#a78bfa" stroke-width="2"/>
+          <circle r="14" fill="none" stroke="#a78bfa" stroke-width=".5" opacity=".4"/>
+          <text y="24" text-anchor="middle" fill="#a78bfa" font-size="9" font-weight="700">RB-H1</text>
+        </g>
+        <!-- selected ring -->
+        <circle id="sel-ring" cx="300" cy="160" r="22" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="3,3" opacity=".6"/>
+      </svg>
+      <div class="map-overlay">
+        <div class="map-badge" style="color:var(--green)">▲ 3 AIRBORNE</div>
+        <div class="map-badge" id="sel-label" style="color:var(--blue)">◈ RB-01 ACTIVE</div>
+      </div>
+      <div class="ac-selector">
+        <div class="ac-btn selected" onclick="selectAcBtn('RB-01',this)">RB-01</div>
+        <div class="ac-btn" onclick="selectAcBtn('RB-02',this)">RB-02</div>
+        <div class="ac-btn" onclick="selectAcBtn('RB-H1',this)">RB-H1</div>
+      </div>
+    </div>
+    <!-- PFD -->
+    <div class="pfd-panel">
+      <div class="pfd-title">Primary Flight Display — <span id="pfd-acid">RB-01</span></div>
+      <svg id="pfd-svg" viewBox="0 0 300 340" style="width:100%;height:auto;">
+        <!-- attitude indicator bg -->
+        <clipPath id="ai-clip"><circle cx="150" cy="110" r="85"/></clipPath>
+        <!-- sky/ground -->
+        <g clip-path="url(#ai-clip)">
+          <rect id="ai-sky" x="65" y="25" width="170" height="170" fill="#1e3a5f"/>
+          <rect id="ai-gnd" x="65" y="110" width="170" height="85" fill="#5c3d1e"/>
+          <line id="ai-horizon" x1="65" y1="110" x2="235" y2="110" stroke="#fff" stroke-width="1.5"/>
+        </g>
+        <circle cx="150" cy="110" r="85" fill="none" stroke="#334155" stroke-width="2"/>
+        <!-- pitch lines -->
+        <g id="pitch-marks" clip-path="url(#ai-clip)">
+          <line x1="120" y1="96" x2="180" y2="96" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>
+          <text x="185" y="99" fill="rgba(255,255,255,.4)" font-size="8">5</text>
+          <line x1="120" y1="124" x2="180" y2="124" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>
+          <text x="185" y="127" fill="rgba(255,255,255,.4)" font-size="8">-5</text>
+          <line x1="130" y1="82" x2="170" y2="82" stroke="rgba(255,255,255,.3)" stroke-width=".6"/>
+          <text x="175" y="85" fill="rgba(255,255,255,.3)" font-size="7">10</text>
+          <line x1="130" y1="138" x2="170" y2="138" stroke="rgba(255,255,255,.3)" stroke-width=".6"/>
+          <text x="175" y="141" fill="rgba(255,255,255,.3)" font-size="7">-10</text>
+        </g>
+        <!-- aircraft symbol -->
+        <line x1="110" y1="110" x2="140" y2="110" stroke="#f59e0b" stroke-width="3"/>
+        <line x1="160" y1="110" x2="190" y2="110" stroke="#f59e0b" stroke-width="3"/>
+        <circle cx="150" cy="110" r="3" fill="#f59e0b"/>
+        <!-- bank arc -->
+        <path d="M 80 110 A 70 70 0 0 1 220 110" fill="none" stroke="#334155" stroke-width="1.5"/>
+        <line id="bank-needle" x1="150" y1="45" x2="150" y2="55" stroke="#fff" stroke-width="2" transform-origin="150 110"/>
+        <!-- speed tape -->
+        <rect x="8" y="25" width="45" height="170" rx="3" fill="#0d0f14" stroke="#334155" stroke-width="1"/>
+        <text x="30" y="20" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="700">KIAS</text>
+        <rect x="10" y="102" width="41" height="18" rx="2" fill="#1e2d4a" stroke="#4f8ef7" stroke-width="1"/>
+        <text id="spd-box" x="30" y="115" text-anchor="middle" fill="#fff" font-size="13" font-weight="700" font-family="'JetBrains Mono',monospace">112</text>
+        <line x1="51" y1="111" x2="56" y2="111" stroke="#4f8ef7" stroke-width="1.5"/>
+        <!-- alt tape -->
+        <rect x="247" y="25" width="45" height="170" rx="3" fill="#0d0f14" stroke="#334155" stroke-width="1"/>
+        <text x="269" y="20" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="700">ALT ft</text>
+        <rect x="249" y="102" width="41" height="18" rx="2" fill="#1e2d4a" stroke="#4f8ef7" stroke-width="1"/>
+        <text id="alt-box" x="269" y="115" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="'JetBrains Mono',monospace">3420</text>
+        <line x1="247" y1="111" x2="244" y2="111" stroke="#4f8ef7" stroke-width="1.5"/>
+        <!-- heading tape -->
+        <rect x="90" y="205" width="120" height="22" rx="3" fill="#0d0f14" stroke="#334155" stroke-width="1"/>
+        <text x="150" y="200" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="700">HDG</text>
+        <text id="hdg-box" x="150" y="221" text-anchor="middle" fill="#fff" font-size="13" font-weight="700" font-family="'JetBrains Mono',monospace">245°</text>
+        <!-- data strip -->
+        <rect x="8" y="234" width="284" height="96" rx="4" fill="#0d0f14" stroke="#1e2d4a" stroke-width="1"/>
+        <text x="20" y="252" fill="#64748b" font-size="9">V/SPEED</text>
+        <text id="vspd-val" x="20" y="266" fill="#34d399" font-size="13" font-weight="700" font-family="'JetBrains Mono',monospace">+320</text>
+        <text x="20" y="278" fill="#64748b" font-size="8">fpm</text>
+        <text x="90" y="252" fill="#64748b" font-size="9">PITCH</text>
+        <text id="pitch-val" x="90" y="266" fill="#e2e8f0" font-size="13" font-weight="700" font-family="'JetBrains Mono',monospace">+2.4°</text>
+        <text x="168" y="252" fill="#64748b" font-size="9">ROLL</text>
+        <text id="roll-val" x="168" y="266" fill="#e2e8f0" font-size="13" font-weight="700" font-family="'JetBrains Mono',monospace">-5.1°</text>
+        <text x="236" y="252" fill="#64748b" font-size="9">MODE</text>
+        <text id="mode-val" x="236" y="266" fill="#f59e0b" font-size="11" font-weight="700">AUTO</text>
+        <!-- bat/gps row -->
+        <text x="20" y="296" fill="#64748b" font-size="9">BAT</text>
+        <text id="bat-val" x="20" y="310" fill="#34d399" font-size="11" font-weight="700" font-family="'JetBrains Mono',monospace">24.1V</text>
+        <text x="80" y="296" fill="#64748b" font-size="9">SATS</text>
+        <text id="sat-val" x="80" y="310" fill="#34d399" font-size="11" font-weight="700" font-family="'JetBrains Mono',monospace">14</text>
+        <text x="128" y="296" fill="#64748b" font-size="9">HDOP</text>
+        <text id="hdop-val" x="128" y="310" fill="#34d399" font-size="11" font-weight="700" font-family="'JetBrains Mono',monospace">0.84</text>
+        <text x="186" y="296" fill="#64748b" font-size="9">RSSI</text>
+        <text id="rssi-val" x="186" y="310" fill="#34d399" font-size="11" font-weight="700" font-family="'JetBrains Mono',monospace">-68dBm</text>
+      </svg>
+    </div>
+  </div>
+  <!-- fleet table + log -->
+  <div class="ops-bottom">
+    <div class="fleet-table-wrap">
+      <table>
+        <tr><th>ID</th><th>Type</th><th>Mode</th><th>Alt (ft)</th><th>Spd (kts)</th><th>Hdg</th><th>Bat</th><th>Link</th><th>Status</th></tr>
+        <tr>
+          <td style="color:var(--blue);font-weight:700">RB-01</td><td>Fixed Wing</td>
+          <td><span class="badge badge-blue">AUTO</span></td>
+          <td id="t-alt-01" class="mono">3,420</td><td id="t-spd-01" class="mono">112</td>
+          <td id="t-hdg-01" class="mono">245°</td><td id="t-bat-01" style="color:var(--green)">24.1V</td>
+          <td><span class="badge badge-green">94%</span></td><td><span class="badge badge-green">NOMINAL</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--green);font-weight:700">RB-02</td><td>Fixed Wing</td>
+          <td><span class="badge badge-blue">AUTO</span></td>
+          <td id="t-alt-02" class="mono">2,180</td><td id="t-spd-02" class="mono">97</td>
+          <td id="t-hdg-02" class="mono">112°</td><td id="t-bat-02" style="color:var(--green)">22.8V</td>
+          <td><span class="badge badge-green">91%</span></td><td><span class="badge badge-green">NOMINAL</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--purple);font-weight:700">RB-H1</td><td>Helicopter</td>
+          <td><span class="badge badge-amber">LOITER</span></td>
+          <td id="t-alt-h1" class="mono">650</td><td id="t-spd-h1" class="mono">44</td>
+          <td id="t-hdg-h1" class="mono">033°</td><td id="t-bat-h1" style="color:var(--amber)">19.2V</td>
+          <td><span class="badge badge-amber">71%</span></td><td><span class="badge badge-amber">DEGRADED</span></td>
+        </tr>
+      </table>
+    </div>
+    <div class="ops-log" id="ops-log"></div>
+  </div>
+</div>
+
+<!-- TELEMETRY -->
+<div class="panel" id="panel-telem">
+  <div class="telem-grid">
+    <div class="telem-card"><div class="telem-label">Altitude</div><div class="telem-val"><span id="tm-alt">3420</span><span class="telem-unit">ft</span></div><div class="sparkline-wrap"><canvas class="spark" id="sp-alt"></canvas></div></div>
+    <div class="telem-card"><div class="telem-label">Airspeed</div><div class="telem-val"><span id="tm-spd">112</span><span class="telem-unit">kts</span></div><div class="sparkline-wrap"><canvas class="spark" id="sp-spd"></canvas></div></div>
+    <div class="telem-card"><div class="telem-label">Heading</div><div class="telem-val"><span id="tm-hdg">245</span><span class="telem-unit">°</span></div><div class="sparkline-wrap"><canvas class="spark" id="sp-hdg"></canvas></div></div>
+    <div class="telem-card"><div class="telem-label">V/Speed</div><div class="telem-val"><span id="tm-vspd">+320</span><span class="telem-unit">fpm</span></div><div class="sparkline-wrap"><canvas class="spark" id="sp-vspd"></canvas></div></div>
+    <div class="telem-card"><div class="telem-label">Pitch</div><div class="telem-val"><span id="tm-pitch">+2.4</span><span class="telem-unit">°</span></div><div class="sparkline-wrap"><canvas class="spark" id="sp-pitch"></canvas></div></div>
+    <div class="telem-card"><div class="telem-label">Roll</div><div class="telem-val"><span id="tm-roll">-5.1</span><span class="telem-unit">°</span></div><div class="sparkline-wrap"><canvas class="spark" id="sp-roll"></canvas></div></div>
+  </div>
+  <div class="link-row">
+    <div class="link-card"><div class="link-name">C2 Link</div><div class="link-bar-bg"><div class="link-bar-fill" id="lb-c2" style="width:94%;background:var(--green)"></div></div><div class="link-pct" id="lp-c2" style="color:var(--green)">94%</div></div>
+    <div class="link-card"><div class="link-name">ADS-B Rx</div><div class="link-bar-bg"><div class="link-bar-fill" id="lb-adsb" style="width:100%;background:var(--green)"></div></div><div class="link-pct" id="lp-adsb" style="color:var(--green)">100%</div></div>
+    <div class="link-card"><div class="link-name">Video Feed</div><div class="link-bar-bg"><div class="link-bar-fill" id="lb-vid" style="width:71%;background:var(--amber)"></div></div><div class="link-pct" id="lp-vid" style="color:var(--amber)">71%</div></div>
+    <div class="link-card"><div class="link-name">Telemetry</div><div class="link-bar-bg"><div class="link-bar-fill" id="lb-telem" style="width:98%;background:var(--green)"></div></div><div class="link-pct" id="lp-telem" style="color:var(--green)">98%</div></div>
+  </div>
+  <div class="health-grid">
+    <div class="health-row"><span>IMU 1</span><span class="badge badge-green">OK</span></div>
+    <div class="health-row"><span>IMU 2</span><span class="badge badge-green">OK</span></div>
+    <div class="health-row"><span>Magnetometer</span><span class="badge badge-amber">CALIB</span></div>
+    <div class="health-row"><span>Barometer</span><span class="badge badge-green">OK</span></div>
+    <div class="health-row"><span>GPS Primary</span><span class="badge badge-green">3D FIX</span></div>
+    <div class="health-row"><span>GPS Secondary</span><span class="badge badge-blue">SBAS</span></div>
+    <div class="health-row"><span>Flight Controller</span><span class="badge badge-green">OK</span></div>
+    <div class="health-row"><span>Servo Rail</span><span class="badge badge-green">OK</span></div>
+  </div>
+</div>
+
+<!-- MISSIONS -->
+<div class="panel" id="panel-missions">
+  <div class="gantt-wrap">
+    <div class="gantt-title">Q4 2024 Flight Operations Schedule</div>
+    <div id="gantt-chart"></div>
+  </div>
+  <table>
+    <tr><th>Mission</th><th>Aircraft</th><th>Customer</th><th>Area</th><th>ETA</th><th>Status</th></tr>
+    <tr><td>DND-FW-04</td><td>RB-01</td><td>Dept. National Defence</td><td>CYYZ–CYHM corridor</td><td>14:32Z</td><td><span class="badge badge-green">ACTIVE</span></td></tr>
+    <tr><td>NRC-H-07</td><td>RB-H1</td><td>Nat. Research Council</td><td>Hamilton basin survey</td><td>15:10Z</td><td><span class="badge badge-amber">LOITER</span></td></tr>
+    <tr><td>DND-FW-05</td><td>RB-02</td><td>Dept. National Defence</td><td>Kitchener sector</td><td>16:45Z</td><td><span class="badge badge-blue">PLANNED</span></td></tr>
+    <tr><td>NRC-FW-02</td><td>RB-01</td><td>Nat. Research Council</td><td>CYKF–CYHM</td><td>Tomorrow</td><td><span class="badge badge-blue">PLANNED</span></td></tr>
+  </table>
+</div>
+
+<!-- COMMS -->
+<div class="panel" id="panel-comms">
+  <div class="radio-log">
+    <div class="radio-header"><span>VHF Radio Log — 122.800 MHz</span><span style="color:var(--green);font-size:11px;">● LIVE</span></div>
+    <div class="radio-msgs" id="radio-msgs"></div>
+  </div>
+  <div class="radio-log">
+    <div class="radio-header"><span>MAVLink Command Log</span></div>
+    <div class="radio-msgs" id="mav-msgs"></div>
+  </div>
+</div>
+
+<!-- ARCH -->
+<div class="panel" id="panel-arch">
+  <div class="code-tabs">
+    <div class="code-tab active" onclick="showCode('ws',this)">WS Telemetry</div>
+    <div class="code-tab" onclick="showCode('adapter',this)">AC Adapter</div>
+    <div class="code-tab" onclick="showCode('cmd',this)">Command Flow</div>
+    <div class="code-tab" onclick="showCode('cicd',this)">CI/CD</div>
+    <div class="code-tab" onclick="showCode('redux',this)">Redux Slice</div>
+  </div>
+  <div class="code-block active" id="code-ws"><span class="cmt">// WebSocket telemetry bridge — batches MAVLink frames at 60 fps
+// Raw 10 Hz sensor → Redux store with incremental state patches</span>
+
+<span class="kw">import</span> { createSlice, PayloadAction } <span class="kw">from</span> <span class="str">'@reduxjs/toolkit'</span>
+<span class="kw">import</span> { batch } <span class="kw">from</span> <span class="str">'react-redux'</span>
+
+<span class="kw">interface</span> <span class="type">TelemetryFrame</span> {
+  acId: <span class="type">string</span>
+  ts:   <span class="type">number</span>  <span class="cmt">// Unix ms</span>
+  alt:  <span class="type">number</span>; spd: <span class="type">number</span>; hdg: <span class="type">number</span>
+  pitch:<span class="type">number</span>; roll:<span class="type">number</span>; vspd:<span class="type">number</span>
+  lat:  <span class="type">number</span>; lon: <span class="type">number</span>
+  bat:  <span class="type">number</span>; rssi:<span class="type">number</span>; sats:<span class="type">number</span>
+}
+
+<span class="kw">class</span> <span class="type">TelemetryBridge</span> {
+  <span class="kw">private</span> ws: <span class="type">WebSocket</span>
+  <span class="kw">private</span> pending: <span class="type">TelemetryFrame</span>[] = []
+  <span class="kw">private</span> rafId = <span class="num">0</span>
+
+  <span class="fn">connect</span>(url: <span class="type">string</span>, dispatch: <span class="type">AppDispatch</span>) {
+    <span class="kw">this</span>.ws = <span class="kw">new</span> <span class="type">WebSocket</span>(url)
+    <span class="kw">this</span>.ws.onmessage = (e) => {
+      <span class="cmt">// MAVLink frame arrives ~10 Hz per aircraft</span>
+      <span class="kw">const</span> frame: <span class="type">TelemetryFrame</span> = JSON.<span class="fn">parse</span>(e.data)
+      <span class="kw">this</span>.pending.<span class="fn">push</span>(frame)
+    }
+    <span class="cmt">// Coalesce into one Redux batch at display rate (≈60 fps)</span>
+    <span class="kw">const</span> <span class="fn">flush</span> = () => {
+      <span class="kw">if</span> (<span class="kw">this</span>.pending.length) {
+        <span class="fn">batch</span>(() => {
+          <span class="kw">this</span>.pending.<span class="fn">forEach</span>(f =>
+            dispatch(telemSlice.actions.<span class="fn">upsert</span>(f))
+          )
+        })
+        <span class="kw">this</span>.pending = []
+      }
+      <span class="kw">this</span>.rafId = <span class="fn">requestAnimationFrame</span>(flush)
+    }
+    <span class="kw">this</span>.rafId = <span class="fn">requestAnimationFrame</span>(flush)
+  }
+
+  <span class="fn">disconnect</span>() {
+    <span class="fn">cancelAnimationFrame</span>(<span class="kw">this</span>.rafId)
+    <span class="kw">this</span>.ws.<span class="fn">close</span>()
+  }
+}</div>
+  <div class="code-block" id="code-adapter"><span class="cmt">// Aircraft Adapter — GUI decoupled from hardware protocol
+// Swap PixhawkAdapter for ArduPlane, PX4, or sim stub</span>
+
+<span class="kw">interface</span> <span class="type">AircraftAdapter</span> {
+  <span class="fn">arm</span>():    <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+  <span class="fn">disarm</span>(): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+  <span class="fn">setMode</span>(mode: <span class="str">'AUTO'</span>|<span class="str">'LOITER'</span>|<span class="str">'RTL'</span>|<span class="str">'LAND'</span>): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+  <span class="fn">uploadMission</span>(wps: <span class="type">Waypoint</span>[]): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+  <span class="fn">goto</span>(lat: <span class="type">number</span>, lon: <span class="type">number</span>, alt: <span class="type">number</span>): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+}
+
+<span class="kw">class</span> <span class="type">PixhawkAdapter</span> <span class="kw">implements</span> <span class="type">AircraftAdapter</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> sysId: <span class="type">number</span>, <span class="kw">private</span> mavlink: <span class="type">MAVLinkBridge</span>) {}
+
+  <span class="kw">async</span> <span class="fn">arm</span>() {
+    <span class="kw">await</span> <span class="kw">this</span>.mavlink.<span class="fn">sendCommand</span>({
+      command: MAV_CMD.COMPONENT_ARM_DISARM,
+      param1: <span class="num">1</span>, sysId: <span class="kw">this</span>.sysId
+    })
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">waitAck</span>(MAV_CMD.COMPONENT_ARM_DISARM)
+  }
+
+  <span class="kw">async</span> <span class="fn">setMode</span>(mode: <span class="type">FlightMode</span>) {
+    <span class="kw">const</span> customMode = ARDUPILOT_MODES[mode]
+    <span class="kw">await</span> <span class="kw">this</span>.mavlink.<span class="fn">sendCommand</span>({
+      command: MAV_CMD.DO_SET_MODE,
+      param1: MAV_MODE_FLAG.CUSTOM_MODE_ENABLED,
+      param2: customMode, sysId: <span class="kw">this</span>.sysId
+    })
+  }
+}
+
+<span class="cmt">// Sim stub — identical interface, zero hardware needed for CI</span>
+<span class="kw">class</span> <span class="type">SimAdapter</span> <span class="kw">implements</span> <span class="type">AircraftAdapter</span> {
+  <span class="kw">async</span> <span class="fn">arm</span>()     { <span class="kw">return</span> <span class="type">Promise</span>.<span class="fn">resolve</span>() }
+  <span class="kw">async</span> <span class="fn">disarm</span>()  { <span class="kw">return</span> <span class="type">Promise</span>.<span class="fn">resolve</span>() }
+  <span class="kw">async</span> <span class="fn">setMode</span>() { <span class="kw">return</span> <span class="type">Promise</span>.<span class="fn">resolve</span>() }
+  <span class="kw">async</span> <span class="fn">goto</span>()    { <span class="kw">return</span> <span class="type">Promise</span>.<span class="fn">resolve</span>() }
+  <span class="kw">async</span> <span class="fn">uploadMission</span>() { <span class="kw">return</span> <span class="type">Promise</span>.<span class="fn">resolve</span>() }
+}</div>
+  <div class="code-block" id="code-cmd"><span class="cmt">// Command flow — 4-step RTT-tracked confirmation gate
+// Prevents accidental commands; logs every step for audit</span>
+
+<span class="kw">type</span> <span class="type">CmdState</span> = <span class="str">'idle'</span>|<span class="str">'pending'</span>|<span class="str">'armed'</span>|<span class="str">'executing'</span>|<span class="str">'done'</span>
+
+<span class="kw">async function</span> <span class="fn">executeCommand</span>(
+  acId: <span class="type">string</span>, cmd: <span class="type">AircraftCommand</span>, adapter: <span class="type">AircraftAdapter</span>
+): <span class="type">Promise</span>&lt;<span class="type">CommandResult</span>&gt; {
+
+  <span class="kw">const</span> log = auditLogger.<span class="fn">begin</span>({ acId, cmd, operator: auth.<span class="fn">userId</span>() })
+  <span class="kw">const</span> t0 = <span class="type">Date</span>.<span class="fn">now</span>()
+
+  <span class="cmt">// Step 1 — show intent in UI, require explicit confirm</span>
+  <span class="kw">const</span> confirmed = <span class="kw">await</span> ui.<span class="fn">confirmDialog</span>({
+    title: <span class="str">`Execute ${cmd.type} on ${acId}?`</span>,
+    severity: cmd.severity
+  })
+  <span class="kw">if</span> (!confirmed) { log.<span class="fn">cancel</span>(); <span class="kw">return</span> { status: <span class="str">'cancelled'</span> } }
+
+  <span class="cmt">// Step 2 — arm command (pre-flight safety check)</span>
+  dispatch(<span class="fn">setCmdState</span>({ acId, state: <span class="str">'armed'</span> }))
+  <span class="kw">await</span> adapter.<span class="fn">arm</span>()
+
+  <span class="cmt">// Step 3 — execute with RTT tracking</span>
+  dispatch(<span class="fn">setCmdState</span>({ acId, state: <span class="str">'executing'</span> }))
+  <span class="kw">await</span> adapter.<span class="fn">setMode</span>(cmd.mode)
+  <span class="kw">const</span> rtt = <span class="type">Date</span>.<span class="fn">now</span>() - t0
+
+  <span class="cmt">// Step 4 — verify ack and log outcome</span>
+  log.<span class="fn">complete</span>({ rtt, success: <span class="kw">true</span> })
+  metrics.<span class="fn">histogram</span>(<span class="str">'cmd.rtt'</span>, rtt, { cmd: cmd.type })
+  dispatch(<span class="fn">setCmdState</span>({ acId, state: <span class="str">'done'</span> }))
+  <span class="kw">return</span> { status: <span class="str">'success'</span>, rttMs: rtt }
+}</div>
+  <div class="code-block" id="code-cicd"><span class="cmt"># .github/workflows/deploy.yml
+# Full CI: type-check → lint → unit → e2e sim → staging deploy</span>
+
+name: GCS CI/CD
+
+on:
+  push:    { branches: [main, dev] }
+  pull_request: {}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'pnpm' }
+      - run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm tsc --noEmit
+
+      - name: Lint
+        run: pnpm eslint . --max-warnings 0
+
+      - name: Unit tests
+        run: pnpm vitest run --coverage
+        env: { COVERAGE_THRESHOLD: '80' }
+
+      - name: E2E — simulator stub
+        run: |
+          pnpm gcs-sim --port 14550 --aircraft RB-01,RB-02,RB-H1 &
+          SIM_PID=$!
+          pnpm playwright test --reporter=html
+          kill $SIM_PID
+        env:
+          SIM_MODE: stub
+          GCS_URL: http://localhost:3000
+
+  deploy-staging:
+    needs: quality
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Deploy to staging
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: ribbit-gcs-staging
+          directory: dist</div>
+  <div class="code-block" id="code-redux"><span class="cmt">// Redux slice — single source of truth for all aircraft state
+// Normalized by acId; selector hooks for PFD, table, map</span>
+
+<span class="kw">interface</span> <span class="type">AircraftState</span> {
+  entities: <span class="type">Record</span>&lt;<span class="type">string</span>, <span class="type">AircraftTelemetry</span>&gt;
+  selected: <span class="type">string</span> | <span class="kw">null</span>
+  history:  <span class="type">Record</span>&lt;<span class="type">string</span>, <span class="type">TelemetryFrame</span>[]&gt;  <span class="cmt">// ring buffer 300 frames</span>
+}
+
+<span class="kw">const</span> telemSlice = <span class="fn">createSlice</span>({
+  name: <span class="str">'telemetry'</span>,
+  initialState: { entities: {}, selected: <span class="str">'RB-01'</span>, history: {} },
+  reducers: {
+    <span class="fn">upsert</span>(state, action: <span class="type">PayloadAction</span>&lt;<span class="type">TelemetryFrame</span>&gt;) {
+      <span class="kw">const</span> { acId, ...rest } = action.payload
+      state.entities[acId] = { ...state.entities[acId], ...rest }
+      <span class="kw">if</span> (!state.history[acId]) state.history[acId] = []
+      state.history[acId].<span class="fn">push</span>(action.payload)
+      <span class="kw">if</span> (state.history[acId].length > <span class="num">300</span>)
+        state.history[acId].<span class="fn">shift</span>()   <span class="cmt">// ring buffer</span>
+    },
+    <span class="fn">select</span>(state, action: <span class="type">PayloadAction</span>&lt;<span class="type">string</span>&gt;) {
+      state.selected = action.payload
+    }
+  }
+})
+
+<span class="cmt">// Memoized selectors — PFD re-renders only on its ac data change</span>
+<span class="kw">export const</span> <span class="fn">selectPFD</span> = <span class="fn">createSelector</span>(
+  [(s) => s.telem.entities, (s) => s.telem.selected],
+  (entities, id) => id ? entities[id] : <span class="kw">null</span>
+)</div>
+</div>
+
+<!-- PRE-FLIGHT -->
+<div class="panel" id="panel-checklist" style="flex-direction:column;overflow-y:auto;padding:12px;">
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text)">Pre-Flight Checklist — RB-01</div>
+  <div class="checklist-wrap" id="checklist-items"></div>
+  <div style="display:flex;gap:8px;margin-top:4px;">
+    <button class="btn btn-green" onclick="resetChecklist()">Reset</button>
+    <button class="btn btn-blue" onclick="checkAll()">Auto-Complete (Sim)</button>
+    <span id="check-pct" style="margin-left:auto;font-size:12px;color:var(--muted);align-self:center;">0 / 12 complete</span>
+  </div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /main -->
+
+<!-- EM MODAL -->
+<div id="em-modal">
+  <div class="em-box">
+    <div class="em-header">✦ Engineering Manager's Thinking <span class="em-close" onclick="document.getElementById('em-modal').classList.remove('open')">✕</span></div>
+    <div class="em-section"><h3>Architecture Principles</h3><ul>
+      <li><b>WebSocket + RAF batching:</b> raw 10 Hz MAVLink frames coalesced into one Redux batch per animation frame. This keeps React render budget under 16 ms even with 3+ aircraft streaming simultaneously.</li>
+      <li><b>Aircraft Adapter interface:</b> GUI never talks to hardware directly. PixhawkAdapter, ArduPlaneAdapter, and SimAdapter are all swappable. CI runs entirely against SimAdapter — no physical aircraft needed.</li>
+      <li><b>Offline-first ring buffer:</b> 300-frame history per aircraft in Redux. Field ops lose connectivity; GCS must stay useful during link dropouts. History drives sparklines and incident replay.</li>
+      <li><b>Command gate (4-step):</b> Show → Confirm → Arm → Execute with full RTT tracking and append-only audit log. Every operator action is attributable. Required for Transport Canada compliance.</li>
+    </ul></div>
+    <div class="em-section"><h3>First Two Hires</h3><ul>
+      <li><b>Generalist full-stack (P0):</b> Owns the GCS frontend end-to-end. Needs React + TypeScript depth and genuine interest in avionics/embedded. This isn't a pure web role — they'll be on the flight line.</li>
+      <li><b>Geospatial specialist (P1):</b> MapLibre GL, terrain tile pipelines, airspace data (NAV CANADA, Eurocontrol). Current SVG map is a proof-of-concept; production needs real tiled maps with TFR overlays from live feeds.</li>
+    </ul></div>
+    <div class="em-section"><h3>Near-Term Roadmap Risks</h3><ul>
+      <li><b>Flight-test windows are hard constraints.</b> SFOC windows from TC don't move. Everything in the sprint must ship before the next window or it blocks a quarter of revenue.</li>
+      <li><b>Video latency budget:</b> Current WebRTC pipeline is 71% quality on RB-H1. Need to profile whether that's RF or codec. Operator decisions depend on video; degraded feed = grounded aircraft.</li>
+      <li><b>Magnetometer calibration on RB-01:</b> Shows CALIB in health panel. Must resolve before DND-FW-05 or we fly with compass anomaly. Add pre-flight calibration step to checklist gate.</li>
+    </ul></div>
+    <div class="em-section"><h3>Onboarding Standard</h3><p>New hire must be able to run a full sim flight on day one: <code>pnpm gcs-sim</code> → connect GCS → upload mission → arm → AUTO → RTL → land. If that loop isn't runnable locally without external deps, it's a team problem not a hire problem.</p></div>
+  </div>
+</div>
+
+<!-- CMD CONFIRM MODAL -->
+<div class="cmd-modal" id="cmd-modal">
+  <div class="cmd-box">
+    <h2 id="cmd-title">⚠ EXECUTE RTL — RB-01?</h2>
+    <p id="cmd-body">This will override the current AUTO mission and return the aircraft to launch point. Confirm with operator authorization.</p>
+    <div class="cmd-btns">
+      <button class="btn btn-muted" onclick="document.getElementById('cmd-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-red" onclick="confirmCmd()">Arm & Execute</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALERT TOAST -->
+<div id="alert-toast"></div>
+
+<style>
+.mono{font-family:'JetBrains Mono',monospace;}
+</style>
+
+<script>
+// ===== STATE =====
+const aircraft = {
+  'RB-01':{ x:300,y:160, vx:0.6,vy:-0.2, alt:3420,spd:112,hdg:245,vspd:320,pitch:2.4,roll:-5.1,bat:24.1,rssi:-68,sats:14,mode:'AUTO',color:'#4f8ef7' },
+  'RB-02':{ x:480,y:120, vx:-0.4,vy:0.5, alt:2180,spd:97,hdg:112,vspd:150,pitch:1.2,roll:3.2,bat:22.8,rssi:-72,sats:12,mode:'AUTO',color:'#34d399' },
+  'RB-H1':{ x:220,y:320, vx:0.1,vy:-0.1, alt:650,spd:44,hdg:33,vspd:0,pitch:0.4,roll:1.1,bat:19.2,rssi:-81,sats:10,mode:'LOITER',color:'#a78bfa' }
+};
+let selectedAc = 'RB-01';
+const sparkData = { alt:[],spd:[],hdg:[],vspd:[],pitch:[],roll:[] };
+const MAX_SPARK = 60;
+
+// ===== CLOCK =====
+function updateClock(){
+  const n=new Date();
+  document.getElementById('utc-clock').textContent=
+    n.getUTCHours().toString().padStart(2,'0')+':'+
+    n.getUTCMinutes().toString().padStart(2,'0')+':'+
+    n.getUTCSeconds().toString().padStart(2,'0')+'Z';
+}
+setInterval(updateClock,1000); updateClock();
+
+// ===== PANEL NAV =====
+function showPanel(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ===== CODE TABS =====
+function showCode(id,el){
+  document.querySelectorAll('.code-block').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.code-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('code-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ===== AIRCRAFT SELECT =====
+function selectAc(id,sideEl){
+  selectedAc=id;
+  document.querySelectorAll('.sidebar-item').forEach(i=>i.classList.remove('active'));
+  sideEl.classList.add('active');
+  document.getElementById('sel-label').textContent='◈ '+id+' ACTIVE';
+  document.getElementById('pfd-acid').textContent=id;
+  updateSelRing();
+  document.querySelectorAll('.ac-btn').forEach(b=>{
+    b.classList.toggle('selected', b.textContent===id);
+  });
+}
+function selectAcBtn(id,btn){
+  selectedAc=id;
+  document.getElementById('sel-label').textContent='◈ '+id+' ACTIVE';
+  document.getElementById('pfd-acid').textContent=id;
+  document.querySelectorAll('.ac-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  updateSelRing();
+}
+function updateSelRing(){
+  const ac=aircraft[selectedAc];
+  const r=document.getElementById('sel-ring');
+  r.setAttribute('cx',ac.x); r.setAttribute('cy',ac.y);
+}
+
+// ===== MAP ANIMATION =====
+function moveAircraft(){
+  for(const [id,ac] of Object.entries(aircraft)){
+    // Bounds bounce
+    ac.x+=ac.vx; ac.y+=ac.vy;
+    if(ac.x<40||ac.x>720){ ac.vx*=-1; ac.hdg=(ac.hdg+180)%360; }
+    if(ac.y<20||ac.y>370){ ac.vy*=-1; }
+    // Drift heading
+    ac.hdg=(ac.hdg+ac.vx*0.3+360)%360;
+    const g=document.getElementById('ac-'+id);
+    if(!g) continue;
+    const rot=ac.hdg-90;
+    g.setAttribute('transform',`translate(${ac.x.toFixed(1)},${ac.y.toFixed(1)}) rotate(${rot.toFixed(1)})`);
+  }
+  updateSelRing();
+}
+
+// ===== TELEMETRY SIM =====
+function simTelemetry(){
+  for(const [id,ac] of Object.entries(aircraft)){
+    ac.alt+=(Math.random()-0.48)*20;
+    ac.alt=Math.max(100,Math.min(8000,ac.alt));
+    ac.spd+=(Math.random()-0.5)*2;
+    ac.spd=Math.max(30,Math.min(180,ac.spd));
+    ac.vspd=(Math.random()-0.5)*600;
+    ac.pitch=(Math.random()-0.5)*8;
+    ac.roll=(Math.random()-0.5)*20;
+    ac.bat-=0.0005;
+  }
+  // Update sidebar labels
+  const sideAcs=document.querySelectorAll('.sidebar-ac');
+  const ids=['RB-01','RB-02','RB-H1'];
+  sideAcs.forEach((el,i)=>{
+    const ac=aircraft[ids[i]];
+    el.textContent=`Alt ${Math.round(ac.alt).toLocaleString()} ft · Spd ${Math.round(ac.spd)} kts`;
+  });
+  // Update fleet table
+  const flds={
+    '01':'RB-01','02':'RB-02','h1':'RB-H1'
+  };
+  for(const[k,id] of Object.entries(flds)){
+    const ac=aircraft[id];
+    setTxt('t-alt-'+k, Math.round(ac.alt).toLocaleString());
+    setTxt('t-spd-'+k, Math.round(ac.spd));
+    setTxt('t-hdg-'+k, Math.round(ac.hdg)+'°');
+    setTxt('t-bat-'+k, ac.bat.toFixed(1)+'V');
+  }
+  // Update PFD for selected
+  const a=aircraft[selectedAc];
+  setTxt('spd-box', Math.round(a.spd));
+  setTxt('alt-box', Math.round(a.alt).toLocaleString());
+  setTxt('hdg-box', Math.round(a.hdg)+'°');
+  setTxt('vspd-val', (a.vspd>=0?'+':'')+Math.round(a.vspd));
+  setTxt('pitch-val', (a.pitch>=0?'+':'')+a.pitch.toFixed(1)+'°');
+  setTxt('roll-val', (a.roll>=0?'+':'')+a.roll.toFixed(1)+'°');
+  setTxt('bat-val', a.bat.toFixed(1)+'V');
+  // Sparkline data
+  sparkData.alt.push(a.alt);
+  sparkData.spd.push(a.spd);
+  sparkData.hdg.push(a.hdg);
+  sparkData.vspd.push(a.vspd);
+  sparkData.pitch.push(a.pitch);
+  sparkData.roll.push(a.roll);
+  for(const k of Object.keys(sparkData)){
+    if(sparkData[k].length>MAX_SPARK) sparkData[k].shift();
+  }
+  drawSparks();
+  // Telem panel
+  setTxt('tm-alt', Math.round(a.alt).toLocaleString());
+  setTxt('tm-spd', Math.round(a.spd));
+  setTxt('tm-hdg', Math.round(a.hdg));
+  setTxt('tm-vspd', (a.vspd>=0?'+':'')+Math.round(a.vspd));
+  setTxt('tm-pitch', (a.pitch>=0?'+':'')+a.pitch.toFixed(1));
+  setTxt('tm-roll', (a.roll>=0?'+':'')+a.roll.toFixed(1));
+  // AI attitude
+  updateAI(a.pitch, a.roll);
+}
+function setTxt(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+
+// ===== PFD ATTITUDE INDICATOR =====
+function updateAI(pitch,roll){
+  const cx=150, cy=110, r=85;
+  const pxPerDeg=8;
+  const dy=pitch*pxPerDeg;
+  const sky=document.getElementById('ai-sky');
+  const gnd=document.getElementById('ai-gnd');
+  const hor=document.getElementById('ai-horizon');
+  if(sky){ sky.setAttribute('y',25+dy); }
+  if(gnd){ gnd.setAttribute('y',110+dy); }
+  if(hor){ hor.setAttribute('y1',110+dy); hor.setAttribute('y2',110+dy); }
+  const bn=document.getElementById('bank-needle');
+  if(bn) bn.setAttribute('transform',`rotate(${roll.toFixed(1)},150,110)`);
+}
+
+// ===== SPARKLINES =====
+function drawSparks(){
+  const map=[
+    ['sp-alt','alt','#4f8ef7'],
+    ['sp-spd','spd','#34d399'],
+    ['sp-hdg','hdg','#a78bfa'],
+    ['sp-vspd','vspd','#f59e0b'],
+    ['sp-pitch','pitch','#64748b'],
+    ['sp-roll','roll','#64748b'],
+  ];
+  for(const [id,key,color] of map){
+    const c=document.getElementById(id);
+    if(!c) continue;
+    c.width=c.offsetWidth*devicePixelRatio||200;
+    c.height=36*devicePixelRatio;
+    const ctx=c.getContext('2d');
+    ctx.scale(devicePixelRatio,devicePixelRatio);
+    const w=c.offsetWidth||100, h=36;
+    ctx.clearRect(0,0,w,h);
+    const d=sparkData[key];
+    if(d.length<2) continue;
+    const mn=Math.min(...d), mx=Math.max(...d);
+    const range=mx-mn||1;
+    ctx.beginPath();
+    ctx.strokeStyle=color;
+    ctx.lineWidth=1.5;
+    ctx.lineJoin='round';
+    d.forEach((v,i)=>{
+      const x=(i/(d.length-1))*w;
+      const y=h-((v-mn)/range)*(h-4)-2;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+}
+
+// ===== OPS LOG =====
+const logMsgs=[
+  ['INFO','RB-01 waypoint 4/8 reached'],
+  ['INFO','RB-02 entering CYKF sector'],
+  ['WARN','RB-H1 video bitrate degraded (1.2 Mbps)'],
+  ['INFO','NRC-H-07 loiter hold acknowledged'],
+  ['INFO','RB-01 altitude 3,420 ft — on profile'],
+  ['WARN','Magnetometer RB-01 — recalibrate before DND-FW-05'],
+  ['INFO','DND-FW-04 ETA CYHM 14:32Z'],
+  ['INFO','RB-02 C2 link RSSI -72 dBm'],
+  ['CRIT','TFR zone active SE quadrant SFC–2000ft'],
+  ['INFO','RB-H1 battery 19.2V — monitor'],
+];
+let logIdx=0;
+function addLog(){
+  const [level,msg]=logMsgs[logIdx%logMsgs.length];
+  logIdx++;
+  const now=new Date();
+  const ts=now.getUTCHours().toString().padStart(2,'0')+':'+
+    now.getUTCMinutes().toString().padStart(2,'0')+':'+
+    now.getUTCSeconds().toString().padStart(2,'0')+'Z';
+  const el=document.createElement('div');
+  el.className='log-entry';
+  const cls=level==='WARN'?'log-warn':level==='CRIT'?'log-crit':'log-info';
+  el.innerHTML=`<span class="log-ts">${ts}</span><span class="${cls}">[${level}] ${msg}</span>`;
+  const log=document.getElementById('ops-log');
+  log.insertBefore(el,log.firstChild);
+  while(log.children.length>30) log.removeChild(log.lastChild);
+}
+setInterval(addLog,2800);
+
+// ===== RADIO COMMS =====
+const radioMsgs=[
+  ['CYYZ CTR','Ribbit RB-01, squawk 4521, cleared CYHM direct'],
+  ['RB-01','Squawk 4521, CYHM direct, Ribbit RB-01'],
+  ['CYYZ CTR','RB-02, traffic 12 o\'clock 5 miles, altitude 2500'],
+  ['RB-02','Traffic in sight, Ribbit RB-02'],
+  ['RB-H1 OPS','RB-H1 entering loiter hold, NRC survey checkpoint 3'],
+  ['CYYZ CTR','RB-01 contact Hamilton Approach 119.4'],
+  ['RB-01','119.4, Ribbit RB-01, good day'],
+  ['RB-02 OPS','Waypoint 6 of 10 — DND corridor on profile'],
+  ['CYYZ CTR','All Ribbit traffic, TFR active southeast sector 1800Z'],
+];
+let radioIdx=0;
+function addRadio(){
+  const [call,text]=radioMsgs[radioIdx%radioMsgs.length];
+  radioIdx++;
+  const now=new Date();
+  const ts=now.getUTCHours().toString().padStart(2,'0')+':'+
+    now.getUTCMinutes().toString().padStart(2,'0')+':'+
+    now.getUTCSeconds().toString().padStart(2,'0')+'Z';
+  const el=document.createElement('div');
+  el.className='radio-msg';
+  el.innerHTML=`<span class="radio-ts">${ts}</span><span class="radio-call">${call}</span><span class="radio-text">${text}</span>`;
+  const msgs=document.getElementById('radio-msgs');
+  msgs.appendChild(el);
+  msgs.scrollTop=msgs.scrollHeight;
+  if(msgs.children.length>40) msgs.removeChild(msgs.firstChild);
+}
+setInterval(addRadio,4500);
+// MAV log
+const mavMsgs=[
+  'CMD_DO_SET_MODE AUTO → RB-01 ACK 12ms',
+  'CMD_NAV_WAYPOINT wp:5 → RB-01 ACK 8ms',
+  'CMD_DO_SET_MODE LOITER → RB-H1 ACK 15ms',
+  'HEARTBEAT RB-01 sys:1 comp:1 state:ACTIVE',
+  'HEARTBEAT RB-02 sys:2 comp:1 state:ACTIVE',
+  'HEARTBEAT RB-H1 sys:3 comp:1 state:ACTIVE',
+  'CMD_NAV_WAYPOINT wp:6 → RB-02 ACK 11ms',
+];
+let mavIdx=0;
+function addMav(){
+  const msg=mavMsgs[mavIdx%mavMsgs.length]; mavIdx++;
+  const el=document.createElement('div');
+  el.className='radio-msg';
+  const ts=new Date().toISOString().substr(11,8)+'Z';
+  el.innerHTML=`<span class="radio-ts">${ts}</span><span class="radio-text" style="color:var(--green)">${msg}</span>`;
+  const msgs=document.getElementById('mav-msgs');
+  msgs.appendChild(el);
+  msgs.scrollTop=msgs.scrollHeight;
+  if(msgs.children.length>40) msgs.removeChild(msgs.firstChild);
+}
+setInterval(addMav,1800);
+
+// ===== GANTT =====
+const ganttData=[
+  {label:'SFOC Application',start:0,end:15,color:'#4f8ef7'},
+  {label:'Ground Testing',start:10,end:30,color:'#64748b'},
+  {label:'DND-FW-04',start:28,end:38,color:'#34d399'},
+  {label:'NRC Survey H-07',start:32,end:50,color:'#a78bfa'},
+  {label:'DND-FW-05',start:45,end:60,color:'#4f8ef7'},
+  {label:'Q4 Deliverable',start:55,end:70,color:'#f59e0b'},
+  {label:'Review & Report',start:65,end:80,color:'#64748b'},
+];
+function buildGantt(){
+  const wrap=document.getElementById('gantt-chart');
+  if(!wrap) return;
+  const today=35; // day 35 of quarter
+  ganttData.forEach(r=>{
+    const row=document.createElement('div');
+    row.className='gantt-row';
+    row.innerHTML=`<div class="gantt-label">${r.label}</div>
+    <div class="gantt-track">
+      <div class="gantt-bar" style="left:${r.start}%;width:${r.end-r.start}%;background:${r.color};">${r.label.split(' ')[0]}</div>
+      <div class="gantt-today" style="left:${today}%"></div>
+    </div>`;
+    wrap.appendChild(row);
+  });
+}
+
+// ===== CHECKLIST =====
+const checks=[
+  'Battery voltage > 22.0V','GPS fix acquired (3D/SBAS)',
+  'Compass calibration current','All control surfaces responsive',
+  'Flight plan loaded and verified','Airspace clearance confirmed',
+  'Video feed active','C2 link RSSI > -85 dBm',
+  'Emergency return altitude set','Weather minimums met',
+  'NOC notification sent','Crew brief complete',
+];
+let checkState=checks.map(()=>false);
+function buildChecklist(){
+  const wrap=document.getElementById('checklist-items');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  checks.forEach((c,i)=>{
+    const div=document.createElement('div');
+    div.className='check-item';
+    div.onclick=()=>toggleCheck(i);
+    div.innerHTML=`<div class="check-box ${checkState[i]?'done':''}">${checkState[i]?'✓':''}</div>
+    <div class="check-label ${checkState[i]?'done':''}">${c}</div>`;
+    wrap.appendChild(div);
+  });
+  const done=checkState.filter(Boolean).length;
+  document.getElementById('check-pct').textContent=`${done} / ${checks.length} complete`;
+}
+function toggleCheck(i){checkState[i]=!checkState[i]; buildChecklist();}
+function resetChecklist(){checkState=checks.map(()=>false); buildChecklist();}
+function checkAll(){
+  let idx=0;
+  const t=setInterval(()=>{ if(idx>=checks.length){clearInterval(t);return;} checkState[idx++]=true; buildChecklist();},150);
+}
+
+// ===== QUICK ACTIONS =====
+let pendingCmd='';
+function triggerRTL(){
+  pendingCmd='RTL';
+  document.getElementById('cmd-title').textContent='⚠ EXECUTE RTL — '+selectedAc+'?';
+  document.getElementById('cmd-body').textContent='This will override the current AUTO mission and return '+selectedAc+' to launch point. Confirm with operator authorization.';
+  document.getElementById('cmd-modal').classList.add('open');
+}
+function triggerLoiter(){
+  pendingCmd='LOITER';
+  document.getElementById('cmd-title').textContent='LOITER HOLD — '+selectedAc+'?';
+  document.getElementById('cmd-body').textContent='Aircraft will enter loiter hold at current position and altitude.';
+  document.getElementById('cmd-modal').classList.add('open');
+}
+function triggerAlert(){
+  pendingCmd='LAND';
+  document.getElementById('cmd-title').textContent='⚠ EMERGENCY LAND — '+selectedAc+'?';
+  document.getElementById('cmd-body').textContent='IMMEDIATE emergency landing will be initiated. Ensure landing zone is clear.';
+  document.getElementById('cmd-modal').classList.add('open');
+}
+function confirmCmd(){
+  document.getElementById('cmd-modal').classList.remove('open');
+  showToast(`✓ ${pendingCmd} command sent to ${selectedAc} — RTT 12ms`,'#34d399');
+  addLog();
+}
+function showToast(msg,color){
+  const t=document.getElementById('alert-toast');
+  t.textContent=msg; t.style.color=color; t.style.borderColor=color;
+  t.style.background=color==='#34d399'?'#134e3a':'#450a0a';
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',3500);
+}
+
+// ===== INIT =====
+buildGantt();
+buildChecklist();
+setInterval(moveAircraft, 100);
+setInterval(simTelemetry, 300);
+// Initial log entries
+for(let i=0;i<6;i++) setTimeout(addLog, i*400);
+for(let i=0;i<4;i++) setTimeout(addRadio, i*600);
+for(let i=0;i<5;i++) setTimeout(addMav, i*300);
+</script>
+
+</body></html>
